@@ -1,0 +1,180 @@
+#include <iostream>
+#include <ctime> // generating room number
+#include <cstdlib> // for random generator
+#include <fstream> // for filing
+#include <stdexcept> // for exception handling
+
+using namespace std;
+
+class UserInfo {
+protected:
+    string name;
+    string address;
+    string CNIC;
+    int guests;
+    string checkin;
+    string checkout;
+    bool meal; // true for breakfast and dinner, false for none
+
+public:
+    UserInfo() {}
+    UserInfo(string n, string a, string c, int g, string ci, string co, bool m)
+        : name(n), address(a), CNIC(c), guests(g), checkin(ci), checkout(co), meal(m) {}
+
+    virtual void displayDetails() {
+        cout << "User Information:" << endl;
+        cout << "Name: " << name << endl;
+        cout << "Address: " << address << endl;
+        cout << "CNIC: " << CNIC << endl;
+    }
+
+    friend ostream& operator<<(ostream& os, const UserInfo& ui) {
+        os << "Name: " << ui.name << endl;
+        os << "Address: " << ui.address << endl;
+        os << "CNIC: " << ui.CNIC << endl;
+        os << "Guests: " << ui.guests << endl;
+        os << "Check-in Date: " << ui.checkin << endl;
+        os << "Check-out Date: " << ui.checkout << endl;
+        os << "Meal Package: " << (ui.meal ? "Yes" : "No") << endl;
+        return os;
+    }
+};
+
+class Room : public UserInfo {
+protected:
+    int roomNumber;
+    const int price = 2560;
+
+public:
+    Room() : roomNumber(rand() % 100 + 1) {}
+    Room(string n, string a, string c, int g, string ci, string co, bool m, int roomNumber)
+        : UserInfo(n, a, c, g, ci, co, m), roomNumber(roomNumber) {}
+
+    void displayDetails() override {
+        UserInfo::displayDetails();
+        cout << "Room Number: " << roomNumber << endl;
+        cout << "Price per Night: " << price << " PKR" << endl;
+    }
+
+    friend int calculateTotalCost(const Room& room, int numNights) {
+        return room.price * numNights;
+    }
+
+    friend ostream& operator<<(ostream& os, const Room& room) {
+        os << static_cast<const UserInfo&>(room);
+        os << "Room Number: " << room.roomNumber << endl;
+        os << "Price per Night: " << room.price << " PKR" << endl;
+        return os;
+    }
+};
+
+class Reservation {
+public:
+    virtual void makeReservation() = 0;
+};
+
+class ReservationSystem : public Reservation, public Room {
+public:
+    ReservationSystem() {}
+    ReservationSystem(string n, string a, string c, int g, string ci, string co, bool m, int roomNumber)
+        : Room(n, a, c, g, ci, co, m, roomNumber) {}
+
+    void displayWelcomeMessage() {
+        cout << "=========================================\n";
+        cout << "           Welcome to Our Hotel          \n";
+        cout << "=========================================\n";
+        cout << "Please follow the instructions to make a reservation.\n\n";
+    }
+
+    void gatherUserInfo() {
+        cout << "Enter your name: ";
+        getline(cin, name);
+        cout << "Enter your address: ";
+        getline(cin, address);
+        cout << "Enter your CNIC: ";
+        getline(cin, CNIC);
+        cout << "Enter number of guests (maximum 3 allowed): ";
+        cin >> guests;
+        if (guests < 0 || guests > 3) {
+            cerr << "Number of guests exceeded the limit of 3. Exiting...\n";
+            exit(0);
+        }
+        cin.ignore();
+        cout << "Enter check-in date: ";
+        getline(cin, checkin);
+        cout << "Enter check-out date: ";
+        getline(cin, checkout);
+        char mealOption;
+        cout << "Would you like a meal package (breakfast and dinner)? (y/n): ";
+        cin >> mealOption;
+                meal = (mealOption == 'y' || mealOption == 'Y');
+    }
+
+    void allocateRoom() {
+        cout << "\nRoom Details:\n";
+        cout << "Room Number: " << roomNumber << "\n";
+        cout << "Price per Night: " << price << " PKR\n";
+        cout << "Proceed with reservation? (y/n): ";
+        char confirm;
+        cin >> confirm;
+        if (confirm!= 'y' && confirm!= 'Y') {
+            cout << "Reservation cancelled.\n";
+            exit(0);
+        }
+    }
+
+
+    void displayReservationFromFile() {
+        try {
+            ifstream file("hotel_reservation.txt");
+            if (file.is_open()) {
+                string line;
+                cout << "Reservation Details from File:" << endl;
+                while (getline(file, line)) {
+                    cout << line << endl;
+                }
+                file.close();
+            } else {
+                cerr << "Error: Unable to open file." << endl;
+            }
+        } catch (const std::exception& e) {
+            cerr << "Error: " << e.what() << endl;
+        }
+    }
+
+    void saveToFile() {
+        try {
+            ofstream file("hotel_reservation.txt");
+            if (file.is_open()) {
+                file << "Reservation Details:" << endl;
+                file << *this;
+                file.close();
+                cout << "Reservation saved to file successfully." << endl;
+            }
+        } catch (const std::exception& e) {
+            cerr << "Error: " << e.what() << endl;
+        }
+    }
+
+    void makeReservation() override {
+    displayWelcomeMessage();
+    gatherUserInfo();
+    allocateRoom();
+    saveToFile();
+    cout << "Reservation made successfully." << endl;
+
+    char viewFile;
+    cout << "Would you like to view the reservation details from the file? (y/n): ";
+    cin >> viewFile;
+    if (viewFile == 'y' || viewFile == 'Y') {
+        displayReservationFromFile();
+    }
+}
+};
+
+int main()
+{
+    ReservationSystem rs;
+    rs.makeReservation();
+    return 0;
+}
